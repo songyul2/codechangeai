@@ -1,0 +1,71 @@
+
+the cause of low precision: Imbalance classes
+for example, ‘stable guest abi’ class has 3 messages.
+10% of the data have multiple labels.
+
+metrics used:
+AUC ranges in value from 0 to 1. A model whose predictions are 100% wrong has an AUC of 0.0; one whose predictions are 100% correct has an AUC of 1.0.
+sklearn.metrics.precision_recall_fscore_support — scikit-learn 0.24.2 documentation
+
+Potential improvement areas:
+svm.py uses an svm for each label to predict. MLkNN might be better. its hyperparameters can be tuned with grid serch. with the current parameters 'Liblinear failed to converge'. this file also has the doc2vec code that can generate a vector for a commit without considering each word individually. these vectors can be fed into a neural net.
+
+'Few-shot learning is the problem of making predictions based on a limited number of samples. '
+
+preprocess_stopwords will remove stop words and thus make the training faster.
+GRU could be added to the CNN model to increase the model capacity.
+
+truncating long commits can make the program 20 times faster, but the recall will drop. without truncating cuda will run out of memory.
+
+to address the padding issue, 'A transformer model handles variable-sized input using stacks of self-attention layers instead of RNNs or CNNs. This general architecture has a number of advantages'
+
+glove-wiki-gigaword-100 is a word to vec model pretrained on wikipedia. this does not have many keywords important to our classification.
+
+code details and hyperparameters:
+note: some of the code is unused but it's left there since it could improve the results.
+cnn:
+filter_sizes = [2, 3, 4, 5]
+for example, pick one from these numbers, such as        filter_sizes = [2]. 2 consecutive words will be considered. 
+word_to_index, embedding_matrix have to match.
+nn.Dropout(0.5) is the largest reasonable value. larger dropout values might cause the train precision to be lower than valid.
+
+dataset:
+multilabel = 1 controls multilabel or single label prediction.
+data = data.loc[data.label != "stable guest abi"] ignores this class with too few datapoints.
+
+embed:
+from gensim.parsing.preprocessing import preprocess_string
+Default list of filters:
+
+    strip_tags(),
+
+        strip_punctuation(),
+
+            strip_multiple_whitespaces(),
+
+                strip_numeric(),
+
+                    remove_stopwords(),
+
+                        strip_short(),
+Remove words with length lesser than minsize 3 from s.
+                            stem_text().
+stemming will give results that are not valid words in the vocabulary. it cannot be used.
+
+pad     in order to use CNN, its input has to have the same shape. shorter messages will be padded with 0 by default. longer ones are truncated.
+
+there are 2 steps in embedding. "word_to_index": converts a word to an int.
+        "embedding_matrix": converts an int to a row in the matrix.
+
+multilabel:
+import dataset runs the dataset file.
+matplotlib.use("Agg") 
+other matplotlib backends can cause issues if used over ssh.       
+the training has early stopping. n_epochs is the maximum number of epochs. the training usually ends before reaching it.
+batch_size  'when using a larger batch there is a significant degradation in the quality of the model, as measured by its ability to generalize.'
+lr 'a large learning rate allows the model to learn faster, at the cost of arriving on a sub-optimal final set of weights.'
+torch.cuda.empty_cache() avoids cuda out of memory errors.
+
+chagelog:
+read and write changelogs. the input can be docx or raw changelogs.
+it can combine multiple input files into one csv file. it heavily depends on the format of the docx files. it assumes that line.startswith(("=",)) can act as message separaters. 
